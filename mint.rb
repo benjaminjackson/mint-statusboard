@@ -9,6 +9,7 @@ require 'active_support/all'
 require "uri"
 require "mechanize"
 require 'trollop'
+require 'chronic'
 
 HOSTNAME = "https://wwws.mint.com/"
 
@@ -17,9 +18,13 @@ HOSTNAME = "https://wwws.mint.com/"
   opt :password, "Password", :type => String, :short => 'p', :required => true
   opt :outfile, "Output File", :type => String, :short => 'o', :default => "output.json"
   opt :type, "Transaction Type ('debit' or 'credit')", :type => String, :short => 't', :default => "debit"
+  opt :graph_type, "Graph Type ('line' or 'bar')", :type => String, :short => 'g', :default => "bar"
+  opt :color, "Graph Color ('Red', 'Green', or '#555')", :type => String, :short => 'c', :default => "Green"
   opt :title, "Graph Title", :type => String, :short => 'T', :default => "Spending"
-  opt :num_days, "Number of Days", :type => :integer, :short => 'n', :default => 30
+  opt :since, "Show Transactions Since (e.g., 'last week', 'yesterday')", :type => :string, :short => 's', :default => 'this month'
   opt :show_every_label, "Show All Labels", :type => :boolean, :short => 'l', :default => false
+  opt :weekly, "Show Data Weekly", :type => :boolean, :short => 'w', :default => false
+  opt :monthly, "Show Data Monthly", :type => :boolean, :short => 'm', :default => false
 end
 
 agent = Mechanize.new
@@ -34,7 +39,7 @@ form.submit
 
 TRANSACTIONS_CSV = agent.get(URI.join HOSTNAME, "/transactionDownload.event").body
 
-START_DATE = Date.today - @opts[:num_days]
+START_DATE = Chronic.parse(@opts[:since]).to_date
 END_DATE = Date.today
 
 begin
@@ -104,12 +109,12 @@ create_database_from_csv
 graph = {
   :graph => {
     :title => @opts[:title],
-    :type => "bar",
+    :type => @opts[:graph_type],
     :total => true,
     :yAxis => { :units => { :prefix => "$" } },
     :xAxis => { :showEveryLabel => @opts[:show_every_label] },
     :datasequences => [
-      { :title => @opts[:type].titlecase, :color => "Green", :datapoints => [] },
+      { :title => @opts[:type].titlecase, :color => @opts[:color], :datapoints => [] },
     ]
   }
 }
