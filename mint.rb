@@ -23,6 +23,7 @@ HOSTNAME = "https://wwws.mint.com/"
   opt :title, "Graph Title", :type => String, :short => 'T', :default => "Spending"
   opt :since, "Show Transactions Since (e.g., 'last week', 'yesterday')", :type => :string, :short => 's', :default => 'this month'
   opt :show_every_label, "Show All Labels", :type => :boolean, :short => 'l', :default => false
+  opt :date_format, "Date Format (see http://www.ruby-doc.org/core-2.0/Time.html#method-i-strftime)", :type => String, :short => 'f', :default => "%m/%d/%Y"
   opt :weekly, "Show Data Weekly", :type => :boolean, :short => 'w', :default => false
   opt :monthly, "Show Data Monthly", :type => :boolean, :short => 'm', :default => false
 end
@@ -86,20 +87,21 @@ def dateobj string
 end
 
 def create_database_from_csv
-  CSV.parse(TRANSACTIONS_CSV, headers: true) do |row|
+  CSV.parse(TRANSACTIONS_CSV, :headers => true) do |row|
     x = row.to_hash
     x['Date'] = dateobj(x['Date'])
     x['Amount'] = x['Amount'].to_i
     if Date.parse(x['Date']) > START_DATE && x['Category'] != 'Exclude From Mint'
-      Transaction.create! date: x['Date'],
-        description: x['Description'],
-        original_description: x['Original Description'],
-        amount: x['Amount'],
-        type: x['Transaction Type'],
-        category: Category.first_or_create(:name => x['Category']),
-        account: Account.first_or_create(:name => x['Account Name']),
-        labels: x['Labels'],
-        notes: x['Notes']
+      Transaction.create!({ 
+        :date =>  x['Date'],
+        :description =>  x['Description'],
+        :original_description =>  x['Original Description'],
+        :amount =>  x['Amount'],
+        :type => x['Transaction Type'],
+        :category =>  Category.first_or_create(:name => x['Category']),
+        :account  => Account.first_or_create(:name => x['Account Name']),
+        :labels => x['Labels'],
+        :notes => x['Notes'] })
       end
   end
 end
@@ -139,7 +141,7 @@ end
 
 date_ranges.each do |date_range|
   graph[:graph][:datasequences][0][:datapoints] << {
-    :title => date_range.first.strftime("%m/%d/%Y"), 
+    :title => date_range.first.strftime(@opts[:date_format]), 
     :value => Transaction.sum(:amount, :date => date_range, :type => @opts[:type]).to_f 
   }
 end
