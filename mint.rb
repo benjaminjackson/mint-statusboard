@@ -37,32 +37,23 @@ TRANSACTIONS_CSV = agent.get(URI.join HOSTNAME, "/transactionDownload.event").bo
 START_DATE = Date.today - @opts[:num_days]
 END_DATE = Date.today
 
-begin # define ActiveRecord objects
+begin
 
   class Transaction
   	include DataMapper::Resource
 
-    belongs_to :transaction_type
     has 1, :category
     has 1, :account
 
   	property :id, Serial
     property :name, Text
+    property :type, Text
     property :date, Date
     property :description, Text
     property :original_description, Text
     property :labels, Text
     property :notes, Text
     property :amount, Float
-  end
-
-  class TransactionType
-  	include DataMapper::Resource
-
-    has n, :transactions
-
-  	property :id, Serial
-    property :name, Text
   end
 
   class Category
@@ -99,7 +90,7 @@ def create_database_from_csv
         description: x['Description'],
         original_description: x['Original Description'],
         amount: x['Amount'],
-        transaction_type: TransactionType.first_or_create(:name => x['Transaction Type']),
+        type: x['Transaction Type'],
         category: Category.first_or_create(:name => x['Category']),
         account: Account.first_or_create(:name => x['Account Name']),
         labels: x['Labels'],
@@ -124,10 +115,9 @@ graph = {
 }
 
 (START_DATE..END_DATE).each do |day|
-  transactions = TransactionType.first(:name => @opts[:type])
   graph[:graph][:datasequences][0][:datapoints] << {
     :title => day.strftime("%m/%d/%Y"), 
-    :value => Transaction.sum(:amount, :date => day, :transaction_type => transactions).to_f 
+    :value => Transaction.sum(:amount, :date => day, :type => @opts[:type]).to_f 
   }
 end
 
