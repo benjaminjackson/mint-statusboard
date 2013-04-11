@@ -27,6 +27,9 @@ HOSTNAME = "https://wwws.mint.com/"
   opt :monthly, "Show Data Monthly", :type => :boolean, :short => 'm', :default => false
 end
 
+START_DATE = Chronic.parse(@opts[:since]).to_date
+END_DATE = Date.today
+
 agent = Mechanize.new
 agent.pluggable_parser.default = Mechanize::Download
 
@@ -38,9 +41,6 @@ form.password = @opts[:password]
 form.submit
 
 TRANSACTIONS_CSV = agent.get(URI.join HOSTNAME, "/transactionDownload.event").body
-
-START_DATE = Chronic.parse(@opts[:since]).to_date
-END_DATE = Date.today
 
 begin
 
@@ -119,10 +119,28 @@ graph = {
   }
 }
 
-(START_DATE..END_DATE).each do |day|
+date_ranges = (START_DATE..END_DATE).to_a.map { |day| (day...day + 1) }
+if @opts[:weekly]
+  date_ranges = []
+  date = START_DATE
+  while date < END_DATE
+    date_ranges << (date...date.end_of_week)
+    date = date.end_of_week + 1
+  end
+end
+if @opts[:monthly]
+  date_ranges = []
+  date = START_DATE
+  while date < END_DATE
+    date_ranges << (date...date.end_of_month)
+    date = date.end_of_month + 1
+  end
+end
+
+date_ranges.each do |date_range|
   graph[:graph][:datasequences][0][:datapoints] << {
-    :title => day.strftime("%m/%d/%Y"), 
-    :value => Transaction.sum(:amount, :date => day, :type => @opts[:type]).to_f 
+    :title => date_range.first.strftime("%m/%d/%Y"), 
+    :value => Transaction.sum(:amount, :date => date_range, :type => @opts[:type]).to_f 
   }
 end
 
