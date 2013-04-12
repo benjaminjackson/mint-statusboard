@@ -2,14 +2,13 @@ require 'csv'
 require 'date'
 require 'yaml'
 require 'json'
-require 'data_mapper'
-require 'dm-ar-finders'
-require 'dm-aggregates'
 require 'active_support/all'
 require "uri"
 require "mechanize"
 require 'trollop'
 require 'chronic'
+
+require "#{File.dirname(__FILE__)}/models"
 
 HOSTNAME = "https://wwws.mint.com/"
 
@@ -42,47 +41,6 @@ form.password = @opts[:password]
 form.submit
 
 TRANSACTIONS_CSV = agent.get(URI.join HOSTNAME, "/transactionDownload.event").body
-
-begin
-
-  class Transaction
-  	include DataMapper::Resource
-
-    belongs_to :category
-    belongs_to :account
-
-  	property :id, Serial
-    property :name, Text
-    property :type, Text
-    property :date, Date
-    property :description, Text
-    property :original_description, Text
-    property :labels, Text
-    property :notes, Text
-    property :amount, Float
-  end
-
-  class Category
-  	include DataMapper::Resource
-    has n, :transactions
-
-  	property :id, Serial
-    property :name, Text
-  end
-
-  class Account
-  	include DataMapper::Resource
-    has n, :transactions
-
-  	property :id, Serial
-    property :name, Text
-  end
-
-  DataMapper.setup(:default, ENV['DATABASE_URL'] || "sqlite::memory:")
-
-  DataMapper.finalize
-  DataMapper.auto_upgrade!
-end
 
 def dateobj string
   Date.strptime(string, "%m/%d/%Y").strftime("%d-%m-%Y")
