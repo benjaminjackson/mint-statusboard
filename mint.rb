@@ -48,8 +48,8 @@ begin
   class Transaction
   	include DataMapper::Resource
 
-    has 1, :category
-    has 1, :account
+    belongs_to :category
+    belongs_to :account
 
   	property :id, Serial
     property :name, Text
@@ -64,6 +64,7 @@ begin
 
   class Category
   	include DataMapper::Resource
+    has n, :transactions
 
   	property :id, Serial
     property :name, Text
@@ -71,6 +72,7 @@ begin
 
   class Account
   	include DataMapper::Resource
+    has n, :transactions
 
   	property :id, Serial
     property :name, Text
@@ -90,8 +92,8 @@ def create_database_from_csv
   CSV.parse(TRANSACTIONS_CSV, :headers => true) do |row|
     x = row.to_hash
     x['Date'] = dateobj(x['Date'])
-    x['Amount'] = x['Amount'].to_i
-    if Date.parse(x['Date']) > START_DATE && x['Category'] != 'Exclude From Mint'
+    x['Amount'] = x['Amount'].to_f
+    if Date.parse(x['Date']) >= START_DATE && x['Category'] != 'Exclude From Mint'
       Transaction.create!({ 
         :date =>  x['Date'],
         :description =>  x['Description'],
@@ -142,7 +144,7 @@ end
 date_ranges.each do |date_range|
   graph[:graph][:datasequences][0][:datapoints] << {
     :title => date_range.first.strftime(@opts[:date_format]), 
-    :value => Transaction.sum(:amount, :date => date_range, :type => @opts[:type]).to_f 
+    :value => Transaction.sum(:amount, :date => date_range, :type => @opts[:type]).to_i 
   }
 end
 
